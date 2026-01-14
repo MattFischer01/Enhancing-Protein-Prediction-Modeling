@@ -1,0 +1,303 @@
+---
+title: "Creating Final QCd Plink Files"
+author: "Matthew Fischer"
+date: "2025-01-21"
+output: html_document
+---
+
+This code is to create final QCed plink files for all populations (allpops, europop, aapop, hispop, chnpop) for MESA proteomics WGS data.
+
+All code run below is plink and was run on command line
+
+## All populations - Need to perform QC on all pop files that are not post merging all separate populations: 
+plink -bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/Plink_files/allchr_MESAproteomics/merged/rm_dups/mesa.freeze.10b.chr1-22.pass_and_fail.gtonly.minDP10_rmdups --geno 0.02 --hwe 1e-6 --maf 0.01 --make-bed --out ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/allpops/allpops_qc
+
+#Results:
+83150267 variants loaded from .bim file.
+3311 people (0 males, 0 females, 3311 ambiguous) loaded from .fam.
+Total genotyping rate is 0.973559.
+5214553 variants removed due to missing genotype data (--geno).
+--hwe: 2413073 variants removed due to Hardy-Weinberg exact test.
+65320734 variants removed due to minor allele threshold(s) (--maf).
+10201907 variants and 3311 people pass filters and QC.
+
+#Second step - Bring in post qc files, then keep IDs based on those pc-air in-group
+plink -bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/allpops/allpops_qc --keep-fam ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/allpops_merged_geno0.02_mind0.02/PCAIR/ingroup_IDs.txt --make-bed --out ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/allpops/allpops_secondstep
+
+#Results:
+3311 people (0 males, 0 females, 3311 ambiguous) loaded from .fam.
+--keep-fam: 2963 people remaining.
+
+#Third Step - remove-fam the 10 individuals that did not have age at collection information. 
+plink -bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/allpops/allpops_secondstep --remove-fam ~/2024-11-12_TOPMed_MESA_Proteomics_QC/proteomics_information/10FIDwithnoage_at_collection.txt --make-bed --out ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/allpops/allpops_final
+
+#Results:
+2963 people (0 males, 0 females, 2963 ambiguous) loaded from .fam.
+--remove-fam: 2953 people remaining.
+
+#Update MAF with smaller populations: 
+plink --bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/allpops/allpops_final --maf 0.01 --make-bed --out ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/allpops/allpops_final_updatedmaf
+
+#Results:
+174015 variants removed due to minor allele threshold(s)
+(--maf/--max-maf/--mac/--max-mac).
+10027892 variants and 2953 people pass filters and QC.
+
+
+1) Merge with x chromosome files 
+plink --bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/allpops/allpops_final_updatedmaf --bmerge /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/allpops/allpops_X-chr --make-bed --out /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/allpops/allpops_merged
+
+#results:
+Total genotyping rate is 0.999815.
+10477233 variants and 2953 people pass filters and QC.
+
+2) Run geno 0.02 and maf 0.01 filter
+plink --bfile /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/allpops/allpops_merged --geno 0.02 --maf 0.01 --make-bed --out /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/allpops/allpops_merged_genomaf
+
+#Results:
+Total genotyping rate is 0.999815.
+1481 variants removed due to missing genotype data (--geno).
+8000 variants removed due to minor allele threshold(s)
+(--maf/--max-maf/--mac/--max-mac).
+10467752 variants and 2953 people pass filters and QC.
+
+3) Update sex
+plink --bfile /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/allpops/allpops_merged_genomaf --update-sex ~/2024-09-10_TOPMed_MESA_WGS_QC/population_txt_files/sex_update.txt --make-bed --out /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/allpops/final-final-final/allpops_finalqc_merged
+
+
+## European population
+Bring in post qc files, then keep based on those passing pc-air, then remove-fam the 10 individuals that did not have age at collection information. 
+From post qc: 
+~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/europop/QC_geno0.02_mind0.02/europop_filtered
+
+From PC-Air In group:
+--keep-fam ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/allpops_merged_geno0.02_mind0.02/PCAIR/ingroup_IDs.txt 
+
+From 10 individuals missing age at collection:
+~/2024-11-12_TOPMed_MESA_Proteomics_QC/proteomics_information/10FIDwithnoage_at_collection.txt
+
+#First step - Bring in post qc files, then keep IDs based on those pc-air in-group
+plink -bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/europop/QC_geno0.02_mind0.02/europop_filtered --keep-fam ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/allpops_merged_geno0.02_mind0.02/PCAIR/ingroup_IDs.txt --make-bed --out ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/europop/europop_firststep
+
+#Results:
+1338 people (0 males, 0 females, 1338 ambiguous) loaded from .fam.
+--keep-fam: 1271 people remaining.
+
+#Second Step - remove-fam the 10 individuals that did not have age at collection information. 
+plink -bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/europop/europop_firststep --remove-fam ~/2024-11-12_TOPMed_MESA_Proteomics_QC/proteomics_information/10FIDwithnoage_at_collection.txt --make-bed --out ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/europop/europop_final
+
+#Results:
+1271 people (0 males, 0 females, 1271 ambiguous) loaded from .fam.
+--remove-fam: 1270 people remaining.
+1 individual removed
+
+#Update MAF with smaller populations: 
+plink --bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/europop/europop_final --maf 0.01 --make-bed --out ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/europop/europop_final_updatedmaf
+
+#Results:
+82209 variants removed due to minor allele threshold(s)
+(--maf/--max-maf/--mac/--max-mac).
+8871982 variants and 1270 people pass filters and QC.
+
+
+1) Merge with x chromosome files 
+plink --bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/europop/europop_final_updatedmaf --bmerge /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/europop/europop_X-chr --make-bed --out /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/europop/europop_merged
+
+#results:
+Total genotyping rate is 0.999815.
+9170094 variants and 1270 people pass filters and QC.
+
+2) Run geno 0.02 and maf 0.01 filter
+plink --bfile /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/europop/europop_merged --geno 0.02 --maf 0.01 --make-bed --out /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/europop/europop_merged_genomaf
+
+#Results:
+1289 variants removed due to missing genotype data (--geno).
+4318 variants removed due to minor allele threshold(s)
+(--maf/--max-maf/--mac/--max-mac).
+9164487 variants and 1270 people pass filters and QC.
+
+3) Update sex
+plink --bfile /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/europop/europop_merged_genomaf --update-sex ~/2024-09-10_TOPMed_MESA_WGS_QC/population_txt_files/sex_update.txt --make-bed --out /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/europop/final-final-final/europop_finalqc_merged
+
+## African population
+Bring in post qc files, then keep based on those passing pc-air, then remove-fam the 10 individuals that did not have age at collection information. 
+From post qc: 
+~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/aapop/QC_geno0.02_mind0.02/aapop_filtered
+
+From PC-Air In group:
+--keep-fam ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/allpops_merged_geno0.02_mind0.02/PCAIR/ingroup_IDs.txt 
+
+From 10 individuals missing age at collection:
+~/2024-11-12_TOPMed_MESA_Proteomics_QC/proteomics_information/10FIDwithnoage_at_collection.txt
+
+#First step - Bring in post qc files, then keep IDs based on those pc-air in-group
+plink -bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/aapop/QC_geno0.02_mind0.02/aapop_filtered --keep-fam ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/allpops_merged_geno0.02_mind0.02/PCAIR/ingroup_IDs.txt --make-bed --out ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/aapop/aapop_firststep
+
+#Results:
+744 people (0 males, 0 females, 744 ambiguous) loaded from .fam.
+--keep-fam: 683 people remaining.
+
+#Second Step - remove-fam the 10 individuals that did not have age at collection information. 
+plink -bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/aapop/aapop_firststep --remove-fam ~/2024-11-12_TOPMed_MESA_Proteomics_QC/proteomics_information/10FIDwithnoage_at_collection.txt --make-bed --out ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/aapop/aapop_final
+
+#Results:
+683 people (0 males, 0 females, 683 ambiguous) loaded from .fam.
+--remove-fam: 675 people remaining.
+8 individuals removed 
+
+#Update MAF with smaller populations: 
+plink --bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/aapop/aapop_final --maf 0.01 --make-bed --out ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/aapop/aapop_final_updatedmaf
+
+#Results:
+183306 variants removed due to minor allele threshold(s)
+(--maf/--max-maf/--mac/--max-mac).
+15014841 variants and 675 people pass filters and QC.
+
+1) Merge with x chromosome files 
+plink --bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/aapop/aapop_final_updatedmaf --bmerge /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/aapop/aapop_X-chr --make-bed --out /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/aapop/aapop_merged
+
+#results:
+Total genotyping rate is 0.999807.
+15600921 variants and 675 people pass filters and QC.
+
+2) Run geno 0.02 and maf 0.01 filter
+plink --bfile /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/aapop/aapop_merged --geno 0.02 --maf 0.01 --make-bed --out /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/aapop/aapop_merged_genomaf
+
+#Results:
+Total genotyping rate is 0.999807.
+5568 variants removed due to missing genotype data (--geno).
+8014 variants removed due to minor allele threshold(s)
+(--maf/--max-maf/--mac/--max-mac).
+15587339 variants and 675 people pass filters and QC.
+
+3) Update sex
+plink --bfile /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/aapop/aapop_merged_genomaf --update-sex ~/2024-09-10_TOPMed_MESA_WGS_QC/population_txt_files/sex_update.txt --make-bed --out /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/aapop/final-final-final/aapop_finalqc_merged
+
+
+## Hispanic population
+Bring in post qc files, then keep based on those passing pc-air, then remove-fam the 10 individuals that did not have age at collection information. 
+From post qc: 
+~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/hispop/QC_geno0.02_mind0.02/hispop_filtered
+
+From PC-Air In group:
+--keep-fam ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/allpops_merged_geno0.02_mind0.02/PCAIR/ingroup_IDs.txt 
+
+From 10 individuals missing age at collection:
+~/2024-11-12_TOPMed_MESA_Proteomics_QC/proteomics_information/10FIDwithnoage_at_collection.txt
+
+#First step - Bring in post qc files, then keep IDs based on those pc-air in-group
+plink -bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/hispop/QC_geno0.02_mind0.02/hispop_filtered --keep-fam ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/allpops_merged_geno0.02_mind0.02/PCAIR/ingroup_IDs.txt --make-bed --out ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/hispop/hispop_firststep
+
+#Results:
+673 people (0 males, 0 females, 673 ambiguous) loaded from .fam.
+--keep-fam: 643 people remaining.
+
+#Second Step - remove-fam the 10 individuals that did not have age at collection information. 
+plink -bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/hispop/hispop_firststep --remove-fam ~/2024-11-12_TOPMed_MESA_Proteomics_QC/proteomics_information/10FIDwithnoage_at_collection.txt --make-bed --out ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/hispop/hispop_final
+
+#Results:
+643 people (0 males, 0 females, 643 ambiguous) loaded from .fam.
+--remove-fam: 642 people remaining.
+1 individuals removed 
+
+#Update MAF with smaller populations: 
+plink --bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/hispop/hispop_final --maf 0.01 --make-bed --out ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/hispop/hispop_final_updatedmaf
+
+#Results:
+281240 variants removed due to minor allele threshold(s)
+(--maf/--max-maf/--mac/--max-mac).
+10880061 variants and 642 people pass filters and QC.
+
+1) Merge files
+plink --bfile /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/hispop/hispop_final_updatedmaf --bmerge /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/hispop/hispop_X-chr --make-bed --out /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/hispop/hispop_merged
+
+#results:
+Total genotyping rate is 0.999801.
+11298717 variants and 642 people pass filters and QC.
+
+2) Run geno 0.02 and maf 0.01 filter
+plink --bfile /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/hispop/hispop_merged --geno 0.02 --maf 0.01 --make-bed --out /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/hispop/hispop_merged_genomaf
+
+#Results:
+Total genotyping rate is 0.999801.
+6094 variants removed due to missing genotype data (--geno).
+9728 variants removed due to minor allele threshold(s)
+(--maf/--max-maf/--mac/--max-mac).
+
+3) Update sex
+plink --bfile /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/hispop/hispop_merged_genomaf --update-sex ~/2024-09-10_TOPMed_MESA_WGS_QC/population_txt_files/sex_update.txt --make-bed --out /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/hispop/hispop_finalqc_merged
+
+
+## Chinese population
+Bring in post qc files, then keep based on those passing pc-air, then remove-fam the 10 individuals that did not have age at collection information. 
+From post qc: 
+~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/chnpop/QC_geno0.02_mind0.02/chnpop_filtered
+
+From PC-Air In group:
+--keep-fam ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/allpops_merged_geno0.02_mind0.02/PCAIR/ingroup_IDs.txt 
+
+From 10 individuals missing age at collection:
+~/2024-11-12_TOPMed_MESA_Proteomics_QC/proteomics_information/10FIDwithnoage_at_collection.txt
+
+#First step - Bring in post qc files, then keep IDs based on those pc-air in-group
+plink -bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/chnpop/QC_geno0.02_mind0.02/chnpop_filtered --keep-fam ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/allpops_merged_geno0.02_mind0.02/PCAIR/ingroup_IDs.txt --make-bed --out ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/chnpop/chnpop_firststep
+
+#Results:
+373 people (0 males, 0 females, 373 ambiguous) loaded from .fam.
+--keep-fam: 366 people remaining.
+
+#Second Step - remove-fam the 10 individuals that did not have age at collection information. 
+plink -bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/chnpop/chnpop_firststep --remove-fam ~/2024-11-12_TOPMed_MESA_Proteomics_QC/proteomics_information/10FIDwithnoage_at_collection.txt --make-bed --out ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/chnpop/chnpop_final
+
+#Results:
+366 people (0 males, 0 females, 366 ambiguous) loaded from .fam.
+--remove-fam: 366 people remaining.
+0 individuals removed 
+
+#Update MAF with smaller populations: 
+plink --bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/chnpop/chnpop_final --maf 0.01 --make-bed --out ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/chnpop/chnpop_final_updatedmaf
+
+#Results:
+65002 variants removed due to minor allele threshold(s)
+(--maf/--max-maf/--mac/--max-mac).
+7921029 variants and 366 people pass filters and QC.
+
+1) Merge with x chromosome files 
+plink --bfile ~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/chnpop/chnpop_final_updatedmaf --bmerge /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/chnpop/chnpop_X-chr --make-bed --out /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/chnpop/chnpop_merged
+
+#results:
+Total genotyping rate is 0.999781.
+8187107 variants and 366 people pass filters and QC.
+
+2) Run geno 0.02 and maf 0.01 filter
+plink --bfile /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/chnpop/chnpop_merged --geno 0.02 --maf 0.01 --make-bed --out /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/chnpop/chnpop_merged_genomaf
+
+#Results:
+Total genotyping rate is 0.999781.
+4320 variants removed due to missing genotype data (--geno).
+6309 variants removed due to minor allele threshold(s)
+(--maf/--max-maf/--mac/--max-mac).
+8176478 variants and 366 people pass filters and QC.
+
+3) Update sex
+plink --bfile /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/chnpop/chnpop_merged_genomaf --update-sex ~/2024-09-10_TOPMed_MESA_WGS_QC/population_txt_files/sex_update.txt --make-bed --out /home/matt/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/final_qc_plinkfiles/chnpop/final-final-final/chnpop_finalqc_merged
+
+##Overall Results:
+Num of individuals post qc (3128):
+Euro: 1338
+AA: 744
+His: 673
+Chn: 373
+
+Num of individuals post pc-air (2963):
+Euro: 1271
+AA: 683
+His: 643
+Chn: 366
+
+Num of individuals post removing 10 individuals with missing covariate information (2953):
+Euro: 1270
+AA: 675
+His: 642
+Chn: 366
+

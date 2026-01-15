@@ -1,0 +1,122 @@
+---
+title: "Creating New Protein Expression and Demographic Files"
+author: "Matthew Fischer"
+date: "2025-01-23"
+output: html_document
+---
+
+Turns out that my covariate data is not aligned properly with my protein expression data. This is why I might be getting half my lm ranef data to be 0. This markdown is to repeat creating these files so I can run lm again. 
+
+The code below is what I originally did to the point where the data is still correct. I believe that my mistake was incorporating age_at_collection information at some point. 
+```{r}
+library(data.table) 
+library(dplyr)
+
+#Read in Mapping SMP Plate 
+smpplate <- fread("/home/wheelerlab3/Data/TOPMed/2024-05-03_TOPMed_MESA_Proteomics_Olink/Proteomics_Olink/Mapping_SMP_Plate_03062024.csv", header = T, sep = ",")
+
+#Read in MESAproteomics_demographics.txt
+mesademographics <- fread ("/home/matt/2024-09-10_TOPMed_MESA_WGS_QC/MESAproteomics_demographics.txt", header = T, sep = "\t")
+
+#Read in final QC fam files with FID and IID 
+qc_file <- fread("~/2024-09-10_TOPMed_MESA_WGS_QC/QC_MESAproteomics_allchr/allpops_merged_geno0.02_mind0.02/PCAIR/PCAIR_postfiltering/mergedpops_filtered.fam", header = F, sep = " ")
+colnames(qc_file) <- c("FID", "IID", "PAT", "MAT", "SEX", "PHENOTYPE")
+
+#Keep only the FID in qc_file
+qc_file <- select(qc_file, "FID")
+
+#merge mesademographics with qc_file by FID
+qc_demographics <- left_join(qc_file, mesademographics, by= "FID")
+
+#Make sidno in smpplate an integer type to be able to merge with qc_demographics
+smpplate$sidno <- as.integer(smpplate$sidno)
+
+#merge qc_demographics into smpplate by sidno with inner_join (we only want proteomic sample IDs that have matching WGS)
+protsample_id_demographics <- inner_join(smpplate, qc_demographics, by = "sidno")
+
+#Clear extra SampleID.y column
+protsample_id_demographics$SampleID.y <- NULL
+```
+
+Now I have to incorporate age_at_collection data 
+```{r}
+case1_extrainfo <- fread("/home/wheelerlab3/Data/TOPMed/2024-05-03_TOPMed_MESA_Proteomics_Olink/Proteomics_Olink/dbGaP_pheno_download_2024-11-18/phs001416.v4.pht010511.v2.p1.c1.TOPMed_MESA_Proteomics_Sample_Attributes.HMB.txt.gz", header = T, sep = "\t")
+
+#Now I need to clean the data. First make the first row the actual col names, then remove the extra row 
+colnames(case1_extrainfo) <- as.character(case1_extrainfo[1,])
+case1_extrainfo <- case1_extrainfo[-1,]
+
+#Keep the columns I need:
+case1_extrainfo <- case1_extrainfo %>% select(dbGaP_Sample_ID, Investigator_ID, TOM_ID, PlateID, AGE_AT_COLLECTION, COLLECTION_YEAR, COLLECTION_VISIT)
+
+#Rename Investigator_ID column
+colnames(case1_extrainfo) <- c("dbGaP_Sample_ID",   "Sample_ID",   "TOM_ID",            "PlateID",           "AGE_AT_COLLECTION", "COLLECTION_YEAR",  "COLLECTION_VISIT" )
+
+#read in the second case file and row bind with case 1 if there are no similarities
+case2_extrainfo <- fread("/home/wheelerlab3/Data/TOPMed/2024-05-03_TOPMed_MESA_Proteomics_Olink/Proteomics_Olink/dbGaP_pheno_download_2024-11-18/phs001416.v4.pht010511.v2.p1.c2.TOPMed_MESA_Proteomics_Sample_Attributes.HMB-NPU.txt.gz", header = T, sep = "\t")
+
+#Now I need to clean the data. First make the first row the actual col names, then remove the extra row 
+colnames(case2_extrainfo) <- as.character(case2_extrainfo[1,])
+case2_extrainfo <- case2_extrainfo[-1,]
+
+#Keep the columns I need:
+case2_extrainfo <- case2_extrainfo %>% select(dbGaP_Sample_ID, Investigator_ID, TOM_ID, PlateID, AGE_AT_COLLECTION, COLLECTION_YEAR, COLLECTION_VISIT)
+
+#Rename Investigator_ID column
+colnames(case2_extrainfo) <- c("dbGaP_Sample_ID",   "Sample_ID",   "TOM_ID",            "PlateID",           "AGE_AT_COLLECTION", "COLLECTION_YEAR",  "COLLECTION_VISIT" )
+
+#Rbind the two case files and left join with the original 
+cases_extrainfo <- rbind(case1_extrainfo, case2_extrainfo)
+
+#Select the information I want to keep in protsample_id_demographics:
+protsample_id_demographics <- protsample_id_demographics %>% select("SampleID.x", "PlateID", "sidno", "TOM_ID", "FID", "dbGaP_Subject_ID", "age1c", "race1c", "gender1")
+
+#rename SampleID.x to Sample_ID
+colnames(protsample_id_demographics)[1] <- "Sample_ID"
+
+#Left join 
+joined_data <- left_join(protsample_id_demographics, cases_extrainfo, by = "Sample_ID")
+
+#remove extra columns
+joined_data <- joined_data %>% select(-dbGaP_Sample_ID, -TOM_ID.y, -PlateID.y)
+
+#rename .x columns
+joined_data <- joined_data %>% rename(PlateID = PlateID.x, TOM_ID = TOM_ID.x)
+
+#Remove the columns that have NA in age_at_collection
+joined_data <- joined_data %>% filter(!is.na(AGE_AT_COLLECTION))
+```
+
+Now I have the corrected join data, I want to add in the protein expression data, recode the races from numbers to respective characters, and write out files for each population.
+
+```{r}
+#Read in protein expression data:
+ogdata <- fread("/home/wheelerlab3/Data/TOPMed/2024-05-03_TOPMed_MESA_Proteomics_Olink/Proteomics_Olink/Intensity_Data/SMP_IntensityNormalized_03062024.csv", header = T, sep = ',')
+
+#Clean the ogdata that has missing values 
+ogdata_clean <- ogdata %>% select(where(~ all(!is.na(.))))
+
+#remove the two columns (proteins) that we are not using and duplicate OID21327
+doexist <- ogdata_clean %>% select(OID21327)
+ogdata_clean <- ogdata_clean %>% select(-OID31431, -OID30376)
+
+ogdata_clean$OID21327.1 <- ogdata_clean$OID21327
+
+#read out expression data
+fwrite(ogdata_clean, "~/2024-11-12_TOPMed_MESA_Proteomics_QC/proteinexp_cleaned.csv", col.names = T, sep = ',')
+
+##join the data 
+#rename Sample_ID to SampleID to join
+colnames(joined_data)[1] <- "SampleID"
+
+demo_protexp <- left_join(joined_data, ogdata_clean, by = "SampleID")
+
+#Recode race IDs 
+demo_protexp$race1c[demo_protexp$race1c ==1] <- "EUR"
+demo_protexp$race1c[demo_protexp$race1c ==2] <- "CHN"
+demo_protexp$race1c[demo_protexp$race1c ==3] <- "AFR"
+demo_protexp$race1c[demo_protexp$race1c ==4] <- "HIS"
+
+#read out demographic + expression data
+fwrite(demo_protexp, "~/2024-11-12_TOPMed_MESA_Proteomics_QC/allcovariate_withproteinexpresion.csv", col.names = T, sep = ',')
+```
